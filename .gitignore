@@ -1,55 +1,38 @@
-# Prerequisites
-*.d
-
-# Object files
-*.o
-*.ko
-*.obj
-*.elf
-
-# Linker output
-*.ilk
-*.map
-*.exp
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
-
-# Shared objects (inc. Windows DLLs)
+# ---- build output ----
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
 *.dll
-*.so
-*.so.*
-*.dylib
-
-# Executables
 *.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
-
-# Debug files
-*.dSYM/
-*.su
-*.idb
 *.pdb
+*.ilk
+*.exp
+*.lib
+*.obj
+*.cache
 
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
+# ---- Visual Studio / Rider / VS Code ----
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.userprefs
+*.DotSettings.user
 
-# debug information files
-*.dwo
+# ---- runtime files the launcher writes next to itself ----
+# profiles.dat holds the DPAPI-encrypted email, password and refresh token,
+# last-error.txt can contain API responses. Neither belongs in a public repo.
+profiles.dat
+settings.json
+email.txt
+device.id
+last-error.txt
+
+# ---- misc ----
+*.log
+Thumbs.db
+desktop.ini
