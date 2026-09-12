@@ -48,18 +48,6 @@ Current version: **1.10.0** — Product name: `Tevvez SSO Custom Launcher`
 
 ---
 
-## 📸 Screenshots
-
-> Add yours here:
-
-```text
-/screenshots/discover.png
-/screenshots/account.png
-/screenshots/settings-dark.png
-```
-
----
-
 ## 🚀 Quick Start
 
 1. Download the latest release (`SSOLauncher.exe`) or build it yourself (see below).
