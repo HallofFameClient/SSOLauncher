@@ -1,0 +1,98 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Version>1.10.0</Version>
+
+    <!-- Full version info in the PE header. An executable with no company, description
+         or copyright is exactly the profile that generic AV heuristics (Wacatac.B!ml and
+         friends) score as suspicious, so state plainly what this is and who built it. -->
+    <Product>Tevvez SSO Custom Launcher</Product>
+    <AssemblyTitle>Tevvez SSO Custom Launcher</AssemblyTitle>
+    <Description>Unofficial desktop launcher for Star Stable Online. Not affiliated with Star Stable Entertainment AB.</Description>
+    <Company>Tevvez</Company>
+    <Authors>Tevvez</Authors>
+    <Copyright>Copyright (c) 2026 Tevvez</Copyright>
+    <NeutralLanguage>en</NeutralLanguage>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <!-- DPI awareness is declared in app.manifest so that JIT and Native AOT agree;
+         WFAC010 suggests the runtime API instead, which AOT's own manifest overrides. -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
+  </ItemGroup>
+
+  <!--
+    Native AOT: only kicks in for a RID-qualified publish, e.g.
+      dotnet publish -r win-x64 -c Release
+    "dotnet build"/"dotnet run" (no RID) are unaffected and keep using the normal JIT.
+
+    IlcUseEnvironmentalTools=true skips the SDK's own (vswhere-based) VC toolchain
+    auto-detection, which is flaky against this machine's VS install. Instead it
+    expects link.exe/lib.exe to already be resolvable - run vcvarsall.bat for the
+    VS install once per shell before publishing, e.g.:
+      "C:\Program Files\Microsoft Visual Studio\18\Insiders\VC\Auxiliary\Build\vcvarsall.bat" x64
+      dotnet publish -r win-x64 -c Release
+
+    Skipping vcvarsall fails with  link: extra operand '/DEF:...'  - that is Git's
+    coreutils "link" from Git\usr\bin winning the PATH lookup, not MSVC's linker.
+  -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <PublishAot>true</PublishAot>
+    <IlcUseEnvironmentalTools>true</IlcUseEnvironmentalTools>
+    <!-- WinForms isn't an officially supported/trim-safe AOT target (heavy COM
+         marshalling); this app avoids resx resources, data binding and TypeConverters,
+         so it works in practice - suppress the SDK's blanket warning. -->
+    <_SuppressWinFormsTrimError>true</_SuppressWinFormsTrimError>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- The native PDB is ~150 MB and is not shipped. -->
+    <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
+    <XmlResolverIsNetworkingEnabledByDefault>false</XmlResolverIsNetworkingEnabledByDefault>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <!-- PictureBox's built-in URL loading (WebRequest) is unused - we fetch images
+         ourselves via HttpClient - so trim it instead of dragging in its dependencies. -->
+    <RuntimeHostConfigurationOption Include="System.Windows.Forms.PictureBox.UseWebRequest" Value="false" Trim="true" />
+  </ItemGroup>
+
+  <!--
+    Single-file publish. The desktop runtime pack is monolithic - it always brings WPF
+    along, even though this app is WinForms only - and that is the sole reason the output
+    folder had companion DLLs:
+      * the four *_cor3 natives are WPF's rendering/printing libraries, never loaded here;
+      * DirectWriteForwarder and System.Printing are C++/CLI, and their module
+        uninitializer p/invokes vcruntime140_cor3.dll while the process shuts down.
+    Dropping them leaves one self-contained exe. Verified: the app starts and closes
+    cleanly with nothing else in the folder.
+  -->
+  <PropertyGroup>
+    <!-- The whole WPF half has to go as one piece: PresentationCore references
+         DirectWriteForwarder, so removing only the C++/CLI pair leaves ILC with an
+         unresolvable reference. Accessibility stays - WinForms uses it. -->
+    <_WpfAssemblies>;DirectWriteForwarder;PresentationCore;PresentationFramework;PresentationFramework.Aero;PresentationFramework.Aero2;PresentationFramework.AeroLite;PresentationFramework.Classic;PresentationFramework.Luna;PresentationFramework.Royale;PresentationUI;ReachFramework;System.Printing;System.Windows.Controls.Ribbon;System.Windows.Input.Manipulations;System.Windows.Presentation;System.Xaml;UIAutomationClient;UIAutomationClientSideProviders;UIAutomationProvider;UIAutomationTypes;WindowsBase;WindowsFormsIntegration;</_WpfAssemblies>
+    <_WpfNatives>;PresentationNative_cor3;wpfgfx_cor3;D3DCompiler_47_cor3;PenImc_cor3;vcruntime140_cor3;</_WpfNatives>
+  </PropertyGroup>
+
+  <Target Name="DropWpfFromAotCompile" AfterTargets="_ComputeAssembliesToCompileToNative">
+    <ItemGroup>
+      <_ManagedResolvedAssembliesToPublish Remove="@(_ManagedResolvedAssembliesToPublish)"
+                                           Condition="$(_WpfAssemblies.Contains(';%(Filename);'))" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="DropWpfFromPublish" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+                             Condition="$(_WpfAssemblies.Contains(';%(Filename);')) or $(_WpfNatives.Contains(';%(Filename);'))" />
+    </ItemGroup>
+  </Target>
+
+</Project>
